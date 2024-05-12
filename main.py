@@ -79,17 +79,7 @@ class Customer():
         except CustomerNotFoundException as e:
             print(e)
 
-    def getOrdersByCustomer(self,customer_id):
-        cursor.execute(
-            """
-        select oi.product_id,p.name,oi.quantity from orders o inner join
-        Order_items oi on o.order_id=oi.order_id inner join
-        Product p on p.product_id=oi.product_id
-        where o.customer_id= ? """,
-            (customer_id)
-        )
-        for customer in cursor:
-            print(customer)
+
 
 
 
@@ -116,34 +106,25 @@ class Product:
 class Cart:
     def display_cart(self):
         cursor.execute("Select * from Cart_items")
-        #movies = cursor.fetchall()
-        for customer in cursor:
-            print(customer)
+        cart = cursor.fetchall() # Get all data
+        headers = [column [0] for column in cursor.description]
+        print(tabulate (cart, headers=headers, tablefmt="psql"))
+        
 
-    def add_to_cart(self,cart_item_id,customer_id,prod_id,quantity):
+    def add_to_cart(self,customer_id,prod_id,quantity):
         cursor.execute(
             """
             declare @a int = (select cart_id from Cart
 					    where customer_id= ?);
 
-            insert into Cart_items (cart_item_id,cart_id,product_id,quantity)
-            values ( ?,@a , ? , ?)
+            insert into Cart_items (cart_id,product_id,quantity)
+            values ( @a , ? , ?)
             """,
-            (customer_id,cart_item_id,prod_id,quantity)
+            (customer_id,prod_id,quantity)
         )
         conn.commit()
 
-    # def create_cart(self,customer_id):
-    #     cursor.execute(
-    #     """
-    #     insert into cart (customer_id)
-    #     values (?)
-    #     """,
-    #     (customer_id)
-    #     )
-    #     conn.commit()
-
-
+ 
     def remove_from_cart(self,customer_id,prod_id):
         cursor.execute(
             """
@@ -206,7 +187,20 @@ class Order:
             """        
         )
         conn.commit()
-           
+
+
+    def getOrdersByCustomer(self,customer_id):
+        cursor.execute(
+            """
+        select oi.product_id,p.name,oi.quantity from orders o inner join
+        Order_items oi on o.order_id=oi.order_id inner join
+        Product p on p.product_id=oi.product_id
+        where o.customer_id= ? """,
+            (customer_id)
+        )
+        order = cursor.fetchall() # Get all data
+        headers = [column [0] for column in cursor.description]
+        print(tabulate (order, headers=headers, tablefmt="psql"))
 
 
 
@@ -239,6 +233,8 @@ if __name__=='__main__':
 
 
     customer_access=Customer()
+    cart_access=Cart()
+    order_access=Order()
 
     while True:
         print("""
@@ -257,10 +253,37 @@ if __name__=='__main__':
             customer_email=input("Enter Email:")
             customer_pass=input("Enter Password:")
             customer_access.create_customer(customer_name,customer_email,customer_pass)
+            customer_access.display_customer()
         elif choice==2:
             pass
         elif choice==3:
-            customer_access.display_customer()
+            pass
+        elif choice==4:
+            customer_id=int(input("Enter customer ID:"))
+            product_id=int(input("Enter product ID:"))
+            quantity=int(input("Enter quantity:"))
+            cart_access.add_to_cart(customer_id,product_id,quantity)
+        elif choice==5:
+            cart_access.display_cart()
+        elif choice==6:
+            customer_id=int(input("Enter customer ID:"))
+            pq = {}
+            num_entries = int(input("Enter the number of products you want to add: "))
+            for i in range(num_entries):
+                product = input("Enter product ID: ")
+                quantity = input("Enter quantity: ")
+                pq.update({product: quantity})
+            order_access.placeOrder(customer_id,pq)
+        elif choice==7:
+            customer_id=int(input("Enter customer ID:"))
+            order_access.getOrdersByCustomer(customer_id)
+        elif choice==8:
+            break
+        else:
+            print("Wrong choice ❌")
+
+
+
 
 
 
