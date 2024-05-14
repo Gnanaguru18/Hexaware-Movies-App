@@ -1,7 +1,7 @@
+from DAO import MovieService,DirectorService
 
 from Entity.movie import Movie
-from DAO.movie_service import MovieService 
-from DAO.director_service import DirectorService
+
 class MainMenu:
     movie_service = MovieService()
     director_service = DirectorService()
@@ -76,13 +76,9 @@ if __name__=="__main__":
         elif choice == 3:
             main_menu.actor_menu()
         elif choice == 4:
-            # movie_service - class variable
-            # Error will happen will call exit
             main_menu.movie_service.close()
             main_menu.director_service.close()  
-            # main_menu.director_service.close()  # conn2
             break
  
 
-    # cursor.close()
-    # conn.close()
+ 
