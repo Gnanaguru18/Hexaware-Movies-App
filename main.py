@@ -16,7 +16,6 @@ conn_str = (
 print(conn_str)
 conn = pyodbc.connect(conn_str)
 cursor = conn.cursor()
-
 cursor.execute("Select 1")
 print("Database connection is successful")
 
@@ -39,12 +38,13 @@ class Customer():
         headers = [column [0] for column in cursor.description]
         print(tabulate (cust, headers=headers, tablefmt="psql"))
 
-    def create_customer(self,customer_id,customer_name,customer_email,customer_password):
+    def create_customer(self,customer_name,customer_email,customer_password):
         cursor.execute(
-            """INSERT INTO customer (customer_id, name, email, password) VALUES (?, ?, ?, ?)
+            """INSERT INTO customer (name, email, password) VALUES ( ?, ?, ?)
+            declare @a int = (select max(customer_id) from customer)
             insert into cart (customer_id)
-            values (?)   """,
-            (customer_id,customer_name,customer_email,customer_password,customer_id)
+            values (@a)   """,
+            (customer_name,customer_email,customer_password)
         )
         conn.commit()  
 
@@ -69,8 +69,8 @@ class Customer():
 
                     delete from customer
                     where customer_id= @a
-            """
-            (customer_id,)
+            """,
+            (customer_id)
         ).rowcount
         conn.commit()
         try: 
@@ -85,11 +85,24 @@ class Customer():
 
 # PRODUCT TABLE
 class Product:
-    def delete_product(product_id):
+    def display_product(self):
+        cursor.execute("Select * from Product")
+        product = cursor.fetchall() # Get all data
+        headers = [column [0] for column in cursor.description]
+        print(tabulate (product, headers=headers, tablefmt="psql"))
+
+    def createProduct(self,name,price,description,stock_quantity):
+        cursor.execute( "insert into Product ( name, price, description, stock_quantity) values(?,?,?,?)",
+                       (name,price,description,stock_quantity))
+        conn.commit()
+
+    def delete_product(self,product_id):
         rows_deleted = cursor.execute("""
-        select * from product
+        delete from Order_items where product_id=?
+        delete from Cart_items where product_id=?
+        delete from Product where product_id=?
         """,
-        (product_id,)
+        (product_id,product_id,product_id)
         ).rowcount
         conn.commit()
         try: 
@@ -146,10 +159,11 @@ class Cart:
         Cart_items ci on c.cart_id=ci.cart_id
         join Product p on ci.product_id=p.product_id
         where c.customer_id= ?  """,
-            (customer_id)
+        (customer_id)
         )
-        for customer in cursor:
-            print(customer)
+        cart = cursor.fetchall() # Get all data
+        headers = [column [0] for column in cursor.description]
+        print(tabulate (cart, headers=headers, tablefmt="psql"))
 
  ###########################################################################################
 
@@ -187,6 +201,7 @@ class Order:
             """        
         )
         conn.commit()
+        print("Your order has been placed")
 
 
     def getOrdersByCustomer(self,customer_id):
@@ -201,40 +216,17 @@ class Order:
         order = cursor.fetchall() # Get all data
         headers = [column [0] for column in cursor.description]
         print(tabulate (order, headers=headers, tablefmt="psql"))
+        
 
 
 
 
 if __name__=='__main__':
    
-    # order_access=Order()
-
-    # customer_id=2
-    # pq_list={4:5}
-    # shipping_add="palaaani"
-    # order_access.placeOrder(customer_id,pq_list,shipping_add)
-
-    ####################################################3
-
-    # Customer
-
-    # customer_access = Customer()
-
-    # customer_access.display_customer()
-
-    # customer_id=int(input("Enter id:"))
-
-    # customer_name=input("Enter name:")
-    # customer_email=input("Enter mail")
-    # customer_password=input("Enter password")
-    # customer_access.create_customer(customer_id,customer_name,customer_email,customer_password)
-    # customer_access.delete_customer(customer_id)
-    # customer_access.display_customer()
-
-
     customer_access=Customer()
     cart_access=Cart()
     order_access=Order()
+    product_access=Product()
 
     while True:
         print("""
@@ -254,17 +246,29 @@ if __name__=='__main__':
             customer_pass=input("Enter Password:")
             customer_access.create_customer(customer_name,customer_email,customer_pass)
             customer_access.display_customer()
+
         elif choice==2:
-            pass
+            product_name=input("Enter product name:")
+            price=int(input("Enter product price:"))
+            description=input("Enter product description:")
+            stock_quantity=int(input("Enter product quantity:"))
+            product_access.createProduct(product_name,price,description,stock_quantity)
+
         elif choice==3:
-            pass
+            product_access.display_product()
+            product_id=int(input("Enter product ID:"))
+            product_access.delete_product(product_id)
+
         elif choice==4:
             customer_id=int(input("Enter customer ID:"))
             product_id=int(input("Enter product ID:"))
             quantity=int(input("Enter quantity:"))
             cart_access.add_to_cart(customer_id,product_id,quantity)
+
         elif choice==5:
-            cart_access.display_cart()
+            customer_id=int(input("Enter customer ID:"))
+            cart_access.getAllFromCart(customer_id)
+
         elif choice==6:
             customer_id=int(input("Enter customer ID:"))
             pq = {}
@@ -273,10 +277,13 @@ if __name__=='__main__':
                 product = input("Enter product ID: ")
                 quantity = input("Enter quantity: ")
                 pq.update({product: quantity})
-            order_access.placeOrder(customer_id,pq)
+            shipping_address=input("Enter shipping address:")
+            order_access.placeOrder(customer_id,pq,shipping_address)
+
         elif choice==7:
             customer_id=int(input("Enter customer ID:"))
             order_access.getOrdersByCustomer(customer_id)
+
         elif choice==8:
             break
         else:
